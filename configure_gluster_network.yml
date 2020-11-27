@@ -1,0 +1,13 @@
+---
+- name: Configure gluster networking
+  hosts: rhvh
+  tasks:
+    - name: Add an Ethernet connection with static IP configuration
+      nmcli: 
+        conn_name: ens8u1
+        ifname: ens8u1
+        type: ethernet
+        ip4: "{{ gluster_ip }}/24"
+        mtu: 4074
+        state: present
+        autoconnect: yes

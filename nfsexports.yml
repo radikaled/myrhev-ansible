@@ -1,0 +1,42 @@
+---
+- name: Configure local storage NFS exports
+  hosts: rhvh
+  tasks:
+    - name: Configure firewalld
+      firewalld:
+        service: "{{ item }}"
+        permanent: true
+        zone: public
+        state: enabled
+        immediate: true
+      with_items:
+        - nfs
+        - mountd
+        - rpc-bind
+
+    - name: Enable nfs-server
+      service:
+        name: nfs-server
+        state: started
+        enabled: true
+
+    - name: Set permissions and ownership for /data/images
+      file:
+        path: /data
+        state: directory
+        recurse: yes
+        owner: vdsm
+        group: kvm
+        mode: 0755
+
+    - name: Add NFS export
+      lineinfile:
+        path: /etc/exports
+        line: '/data/images 10.10.10.0/24(rw)'
+        state: present
+      notify:
+        - Export directory
+
+  handlers:
+    - name: Export directory
+      command: /usr/sbin/exportfs -ra

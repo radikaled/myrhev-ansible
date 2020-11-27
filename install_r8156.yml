@@ -1,0 +1,61 @@
+---
+- name: Install upstream r8152 kmod
+  hosts: rhvh
+  vars:
+    kmod_file: r8152.ko.xz
+    kmod_rules: 50-usb-realtek-net.rules
+    kmod_path: "/usr/lib/modules/{{ ansible_kernel }}/kernel/drivers/net/usb"
+  tasks:
+    - name: Unload default r8152 kmod
+      modprobe:
+        name: r8152
+        state: absent
+      register: rmmod_result
+
+    - name: Remove default r8152 kmod from fs
+      file:
+        path: "{{ kmod_path }}/{{ kmod_file }}"
+        state: absent
+      when: rmmod_result is succeeded
+
+    - name: Copy upstream r8152 kmod to fs
+      copy:
+        src: "files/{{ kmod_file }}"
+        dest: "{{ kmod_path }}/{{ kmod_file }}"
+        mode: 0644
+        owner: root
+        group: root
+        serole: object_r
+        setype: modules_object_t
+        seuser: system_u
+
+    - name: Copy udev rules for r8152 kmod
+      copy:
+        src: "files/{{ kmod_rules }}"
+        dest: "/etc/udev/rules.d/{{ kmod_rules }}"
+        mode: 0644
+        owner: root
+        group: root
+        serole: object_r
+        setype: udev_rules_t
+        seuser: system_u
+
+    - name: Persist r8152 kmod
+      copy:
+        content: 'r8152'
+        dest: /etc/modules-load.d/r8152.conf
+        mode: 0644
+        owner: root
+        group: root
+        serole: object_r
+        setype: etc_t
+        seuser: system_u
+
+    - name: Reload udev rules
+      shell:
+        cmd: udevadm control --reload
+    
+    - name: Load upstream r8152 kmod
+      modprobe:
+        name: r8152 
+        state: present
